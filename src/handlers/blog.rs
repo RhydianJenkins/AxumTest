@@ -64,7 +64,7 @@ async fn update_blog_post(
     Ok(())
 }
 
-pub async fn delete_blog_post(pool: sqlx::SqlitePool, id: i32) -> Result<()> {
+async fn delete_blog_post(pool: sqlx::SqlitePool, id: i32) -> Result<()> {
     sqlx::query("DELETE FROM blog_posts WHERE id = ?")
         .bind(id)
         .execute(&pool)
