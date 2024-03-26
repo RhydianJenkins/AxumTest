@@ -19,7 +19,7 @@ async fn run_migrations(pool: sqlx::SqlitePool) -> Result<()> {
     Ok(())
 }
 
-async fn create_axum_app(pool: sqlx::SqlitePool) -> Result<Router> {
+async fn create_router(pool: sqlx::SqlitePool) -> Result<Router> {
     let app = axum::Router::new()
         .route("/blogs", get(get_blog_posts_handler))
         .route("/blogs/:id", get(get_blog_post_handler))
@@ -41,7 +41,8 @@ async fn main() -> Result<()> {
 
     println!("Listening on: {}", listen_address);
 
-    axum::serve(listener, create_axum_app(pool.clone()).await?).await?;
+    let router = create_router(pool.clone()).await?;
+    axum::serve(listener, router).await?;
 
     Ok(())
 }
