@@ -1113,6 +1113,7 @@ dependencies = [
  "anyhow",
  "axum",
  "dotenvy",
+ "serde",
  "sqlx",
  "tokio",
 ]
