@@ -3,6 +3,7 @@ mod handlers;
 use anyhow::Result;
 use axum::routing::get;
 use axum::Extension;
+use axum::Router;
 use handlers::blog::get_blog_post_handler;
 use handlers::blog::get_blog_posts_handler;
 
@@ -18,6 +19,15 @@ async fn run_migrations(pool: sqlx::SqlitePool) -> Result<()> {
     Ok(())
 }
 
+async fn create_axum_app(pool: sqlx::SqlitePool) -> Result<Router> {
+    let app = axum::Router::new()
+        .route("/blogs", get(get_blog_posts_handler))
+        .route("/blogs/:id", get(get_blog_post_handler))
+        .layer(Extension(pool.clone()));
+
+    Ok(app)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
@@ -29,14 +39,9 @@ async fn main() -> Result<()> {
 
     run_migrations(pool.clone()).await?;
 
-    let app = axum::Router::new()
-        .route("/blogs", get(get_blog_posts_handler))
-        .route("/blogs/:id", get(get_blog_post_handler))
-        .layer(Extension(pool.clone()));
-
     println!("Listening on: {}", listen_address);
 
-    axum::serve(listener, app).await?;
+    axum::serve(listener, create_axum_app(pool.clone()).await?).await?;
 
     Ok(())
 }
