@@ -1,4 +1,5 @@
 use anyhow::Result;
+use axum::routing::get;
 use sqlx::{FromRow, Row};
 
 #[derive(Debug, FromRow)]
@@ -8,6 +9,12 @@ struct BlogPost {
     title: String,
     body: String,
     author: String,
+}
+
+impl StrConsumer for BlogPost {
+    fn consume(&mut self, buf: &str) {
+        <String as StrConsumer>::consume(&mut self.body, buf)
+    }
 }
 
 async fn get_connection_pool(url: &str) -> Result<sqlx::SqlitePool> {
@@ -82,39 +89,21 @@ async fn delete_blog_post(pool: sqlx::SqlitePool, id: i32) -> Result<()> {
     Ok(())
 }
 
+async fn say_hello() -> &'static str {
+    "Hello, world!"
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
     let database_url = std::env::var("DATABASE_URL")?;
-    println!("Connecting to: {database_url}");
-
+    let listen_address = std::env::var("LISTEN_ADDRESS")?;
+    let listener = tokio::net::TcpListener::bind(&listen_address).await?;
     let pool = get_connection_pool(&database_url).await?;
-    println!("Running migrations");
     run_migrations(pool.clone()).await?;
 
-    println!("{:?}", get_blog_posts(pool.clone()).await?);
-    println!("{:?}", get_blog_post(pool.clone(), 1).await?);
-    let new_id = add_blog_post(
-        pool.clone(),
-        "2021-01-01".to_string(),
-        "My first blog post".to_string(),
-        "This is my first blog post".to_string(),
-        "Herbert".to_string(),
-    )
-    .await?;
-    println!("{:?}", get_blog_post(pool.clone(), new_id).await?);
-    update_blog_post(
-        pool.clone(),
-        new_id,
-        "2021-01-01".to_string(),
-        "My first blog post".to_string(),
-        "This is my first blog post. I have updated it.".to_string(),
-        "Herbert Again".to_string(),
-    )
-    .await?;
-    println!("{:?}", get_blog_post(pool.clone(), new_id).await?);
-    delete_blog_post(pool.clone(), new_id).await?;
-    println!("{:?}", get_blog_posts(pool.clone()).await?);
+    let app = axum::Router::new().route("/hello", get(say_hello));
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
